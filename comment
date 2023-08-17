@@ -1,0 +1,8 @@
+Org ID- 00D25000000HLN6
+Login Access- Grant for 2 days
+Steps to reproduce the error-
+      Step 1. Click on setup.
+      Step 2. In the quick find type All site.
+      Step 3. There you find Ni_web_test Microsite(Lwr) site.
+      Step 4. Click on Builder
+      Step 5. Then click on Publish from the right side and wait for sometime around 30-40 mint then you will get the error on the screen.
