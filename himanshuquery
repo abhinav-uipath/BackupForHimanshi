@@ -1,0 +1,2 @@
+select id, key__c, Tenant_Label__c,Agent_Subject__c ,PrimaryAgent_Subject__c,TenantAccBlank_Label__c, tenantleadtrue_label__c,tenantleadfalse_label__c, Tenant_Old_Email_Label__c, TenantIncorrectDetail_Label__c, Agent_Label__c,agent_2_label__c, AgentAccBlank_Label__c, IndependentLld_Label__c,IndependentLld_2_Label__c, IndLLAccBlank_Label__c, NonMemberLld_Label__c,NonMemberLld_2_Label__c, PrimaryAgent_Label__c 
+from MailJetUtility__mdt
