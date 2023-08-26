@@ -1,0 +1,1 @@
+select id, Template_Id__c, Custom_Metadata_Label__c, Var_Name__c, Object_Name__c, Field_API_Name__c, Where_Check_Field__c, isTable__c, Is_Chaser_Email__c, document__c, Redirect_Link__c, Date_Function__c, Scheme__c, Subject__c from Matching_Temp_Var__c
