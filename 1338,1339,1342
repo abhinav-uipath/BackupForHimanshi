@@ -1,0 +1,6 @@
+EWI need to deploy => 1338 => EI_MailJetUtilityHelper.cls line no. 378 , 
+1339 => AGLL emailupdatewhennoemailAA (Mailjet Utility Custom metadate), NewEmailTenplate (API service Custom metadate), 
+el_EWI_MyAccountClass, el_EWI_MyAccountClass - updateDetails() - line No. 77 - 84,
+Matching temp var records (4030158, 4030130, 5025870) 
+1342 => TT emailupdatewhennoemailTT (Mailjet Utility Custom metadate), EmailUpdateTTWhenNoEmail (API service Custom metadate), 
+el_EWI_MyAccountClass - updateDetails() - line No. 94 - 101, Matching temp var records (4029559, 4029545, 5025976)
