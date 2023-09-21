@@ -1,0 +1,22 @@
+.THIS .slds-file-selector__body{
+   display:none;
+}
+.THIS .file_section .custom_file{
+    position: initial;
+}
+.THIS .file_section .custom_file img{
+	transform: rotate(0deg);
+}
+.THIS [lightning-input_input-host]{
+    height:0px;
+}
+
+.THIS .no_border{
+	border: none !important;
+}
+.THIS .divShow{
+    display:block;
+}
+.THIS .divHide{
+    display:none;
+}

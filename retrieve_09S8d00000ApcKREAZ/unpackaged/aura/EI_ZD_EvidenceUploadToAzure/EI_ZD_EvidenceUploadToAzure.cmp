@@ -1,0 +1,182 @@
+<aura:component controller="EI_ZD_EvidenceUploadToAzure" implements="force:appHostable,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction" access="global" >  
+    
+    <aura:attribute name="recordId" type="Id" default='' />
+    <aura:attribute name="uploadedFileId" type="Id" default='' />
+    <aura:attribute name="truthy" type="boolean" default="true" />  
+    <aura:attribute name="message" type="String" default=""/>
+    <aura:attribute name="fileLable" type="String" default=""/>
+    <aura:attribute name="flName" type="String" default="No file Selected"/>
+    <aura:attribute name="fileName" type="String" default=""/>
+    <aura:attribute name="fileSize" type="String" default=""/>
+    <aura:attribute name="fileSFId" type="String" default=""/>
+    <aura:attribute name="flType" type="String" default=""/> 
+    <aura:attribute name="success" type="String" default=""/>
+    <aura:attribute name="upload" type="boolean" default="false"/>
+    <aura:attribute name="uploadBar" type="Integer" default="10"/>
+    <aura:attribute name="azureLink" type="String" default=""/>
+    <aura:attribute name="fileList" type="Object" default=""/>
+    
+    <aura:attribute name="userType" type="String" default=""/>
+    <aura:attribute name="source" type="String" default=""/>
+    <aura:attribute name="scheme" type="String" default=""/>
+    <aura:attribute name="secureURI" type="String" default=""/>
+    
+    <aura:attribute name="showFileList" type="boolean" default="false"/>
+    <aura:attribute name="showFileUpload" type="boolean" default="true"/>
+    <aura:attribute name="totalNoOfEvidance" type="Integer" default="0"/>
+    <aura:attribute name="fileLableVisible" type="boolean" default="false"/>
+    <aura:attribute name="isUploading" type="boolean" default="false"/>
+    
+    <aura:attribute name="evidenceCategories" type="String" default=""/>
+    <aura:attribute name="evidanceAttachment" type="Evidence_Attachment__c[]" default="null"/>
+    <aura:attribute name="fileNameInAzure" type="string" default=""/>
+    <aura:attribute name="disputeId" type="string" default=""/>
+   <!-- <aura:registerEvent name="EI_ZD_refreshParentView" type="c:EI_ZD_refreshParentView" />-->
+    <!-- <aura:attribute name="sessionId" type="String" default=""/> -->
+    <aura:handler name="init" value="{!this}" action="{!c.onInit}" /> 
+    <aura:attribute name="isEditable" type="boolean" default="false"/>
+    
+    
+    
+    <div class="form-group row">
+        <div class="col-sm-4"></div>
+        <div class="col-sm-8">
+            <aura:if isTrue="{!v.showFileList}">
+                <aura:iteration var="evi" items="{!v.evidanceAttachment}" indexVar="i">
+                    
+                    <aura:if isTrue="{!and(evi.Evidence_Categories__c==v.evidenceCategories,evi.User_Type__c==v.userType)}">
+                        <div class="file_section no_border">
+                            <div class="select_file_section success">
+                                <div class="no_file">
+                                    <span>{!evi.File_Type__c}</span>
+                                    <div>
+                                        <p>{!evi.Filename__c}</p>
+                                        <!--<p>{!evi.File_Size__c}</p>
+                                        <p class="image_desc">756kb <span>Description: Inside of oven</span></p>-->
+                                       
+                                        <p class="{!(evi.File_Type__c=='png' || evi.File_Type__c=='jpg' || evi.File_Type__c=='jpeg')? 'image_desc': ''}">                                           
+                                            <aura:if isTrue="{!lessthan(evi.File_Size__c, 1024)}">
+                                                <lightning:formattedNumber value="{!evi.File_Size__c}" maximumFractionDigits="2" /> Bytes
+                                            </aura:if> 
+                                            
+                                            <aura:if isTrue="{!and(lessthan(evi.File_Size__c, 1024*1024),greaterthan(evi.File_Size__c, 1024))}">
+                                                <lightning:formattedNumber value="{!div(evi.File_Size__c,1024)}" maximumFractionDigits="2" /> KB
+                                            </aura:if>
+                                            
+                                            <aura:if isTrue="{!and(lessthan(evi.File_Size__c, 1024*1024*1024),greaterthan(evi.File_Size__c, 1024*1024))}">
+                                                <lightning:formattedNumber value="{!div(evi.File_Size__c,1024*1024)}" maximumFractionDigits="2" /> MB
+                                            </aura:if>
+                                             
+                                            <aura:if isTrue="{!or(evi.File_Type__c=='png',evi.File_Type__c=='jpg')}">
+                                              <span>Description: {!evi.File_Description__c}</span>
+                                           </aura:if>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="upload_btns slds-m-around--large">
+                                    
+                                    <a href="{!evi.Location__c}" target='_blank' class="tbl-btn"><img src="{!$Resource.EI_ZD_Assets  + '/img/View_icon.svg'}" alt=""/>View</a>
+                                    <aura:if isTrue ="{!v.isEditable}">  
+                                        <button type="button" onclick="{!c.deleteFile}" data-myid="{!evi.Id}" name="{!evi.Azure_File_Name__c}" class="close"><img src="{!$Resource.EI_ZD_Assets  + '/img/Trash.png'}" alt=""/></button>
+                                    </aura:if>
+                                </div>
+                            </div>
+                        </div>
+                    </aura:if>
+                </aura:iteration>
+            </aura:if>
+        </div></div>
+    
+    
+    <aura:if isTrue="{!v.totalNoOfEvidance==5}">
+        <aura:if isTrue ="{!v.isEditable}"> 
+            <div class="form-group row">
+                <div class="col-sm-4 col-form-label"></div>
+                
+                <div class="col-sm-8">
+                    <div class="row">
+                        <div class="col-lg-9">
+                            <div class="alert alert-warning alert-dismissible fade show">
+                                <img src="{!$Resource.EI_ZD_Assets  + '/img/warning-icon.png'}" alt="warning Icon"/>
+                                <div>
+                                   <!-- <strong>Warning!</strong> You may add up to 5 documents per claim area, in addition to the key documents added earlier in the process. To add another file, please remove one or more files above. If you are having any difficulties with uploading your evidence, such as the size or number of files, then please find advice in our <a href="https://zdclaims.tawk.help/category/contact" target='_blank'>FAQs</a>. -->
+                                <strong>Warning!</strong> You may add up to 5 documents per claim area. To add another file, please remove one or more files above. If you are having any difficulties with uploading your evidence, such as the size or number of files, then please find advice in our <a href="https://zdclaims.tawk.help/category/contact" target='_blank'>FAQs</a>.
+                                </div>
+                                <button type="button" class="close" data-dismiss="alert">×</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </aura:if>
+    </aura:if>
+    
+    <aura:if isTrue ="{!v.isEditable}">   
+        <div class="form-group row">
+            <aura:if isTrue="{!v.showFileUpload}">
+                <div class="col-lg-12 col-md-12">
+                    <div class="file_section">
+                        <div class="row">
+                            <aura:renderIf isTrue="{!v.truthy}">
+                                <div class="col-md-5 col-sm-12">
+                                    <lightning:input aura:id="fileId" files="{!v.fileList}" onchange="{!c.handleFilesChange}" type="file" name="file" multiple="false"/>
+                                    <div class="custom_file">
+                                        <img src="{!$Resource.EI_ZD_Assets  + '/img/ZD_feather-upload.svg'}" alt="" />
+                                        <p>Drag and drop file</p>
+                                        <p>OR</p>
+                                        <button type="button" class="see-all">Browse</button>
+                                    </div> 
+                                </div>
+                            </aura:renderIf>
+                            
+                            <div class="col-md-7 col-sm-12">
+                                <div class="{!'select_file_section'+ v.success}">
+                                    <div class="no_file">
+                                        <span>{!v.flType}</span>
+                                        <p>{!v.flName}</p>
+                                    </div>
+                                    <div class="upload_range_part">
+                                        <div>
+                                            <span class="upload_range"></span>
+                                            <aura:renderIf isTrue="{!v.upload}">
+                                                <span class="success_upload" style="{!'width:'+ v.uploadBar +'%'}">
+                                                    <!-- <img src="https://cdn.devdojo.com/images/august2020/progress-bar.gif" />-->
+                                                </span>
+                                            </aura:renderIf>
+                                            <p class="text-right">{!v.message}</p>
+                                        </div>
+                                        
+                                       <!-- <div class="upload_btns">
+                                            <aura:renderIf isTrue="{!and(v.success==' success',v.uploadBar==100)}">
+                                                <button type="button" onclick="{!c.fileUploaded}" class="close check"><img src="{!$Resource.EI_ZD_Assets  + '/img/RIght_Check.png'}" alt="" /></button>
+                                                <button type="button" onclick="{!c.deleteFile}" class="close trash"><img src="{!$Resource.EI_ZD_Assets  + '/img/Trash.png'}" alt="" /></button>
+                                            </aura:renderIf>
+                                        </div> -->
+                                        
+                                    </div>
+                                    <div class="{!v.fileLableVisible? 'divShow': 'divHide'}">
+                                        <div class="image_input">
+                                            <label for="image">You are uploading an image - please give a label or description.</label>
+                                            <input id="filelabel" type="text" class="form-control" placeholder="Enter Description" />
+                                            <p class="text-right" style="color:red;">{!v.fileLable}</p>
+                                            <div style="float:right;">
+                                                <aura:if isTrue ="{!v.isUploading ==false}"> 
+                                                    <lightning:button variant="brand" label="Upload" onclick="{!c.addEvidence}" class="see-all"/>
+                                                    <aura:set attribute="else">
+                                                    <lightning:button variant="brand" label="Upload"  class="see-all"/>
+                                                    </aura:set>
+                                                </aura:if>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aura:if>
+        </div>
+    </aura:if> 
+    
+</aura:component>
