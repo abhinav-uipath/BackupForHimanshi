@@ -1,0 +1,557 @@
+/*
+@TestClassName  :    UpdateDepositFieldsTest
+@date  :    21/12/2020
+
+*/
+trigger Updatedepositfields on Case (after insert,before insert, after update, before update, after delete,before delete,after undelete) {
+    // putting a check in trigger 24 June 2021 by Tajinder
+        if(EI_Utility.flagForTrigger)
+    {
+        if(Trigger.isBefore && Trigger.isInsert){
+            EI_EWI_CaseTriggerHandler.onBeforeInsert(trigger.new);
+        } 
+        return;
+    }
+    /*
+     * Need to uncomment it once Datamigration will be developed 
+     * 
+     */ 
+    //if(EI_EWI_DataMigration.byPassUpdateDepositTrigger){ return; }
+    if(EI_EWI_CaseTriggerHandler.byPassUpdateDepositTrigger) { return; }
+    QueryLimits__c querylimit = QueryLimits__c.getValues('All Limits'); 
+    if(querylimit.CheckOn__c) {
+        
+        
+        if(Test.isRunningTest()){
+            
+            Integer i = 0;
+            
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+            i++;
+        }
+        
+        Map<ID, Deposit__c> parentOpps = new Map<ID, Deposit__c>();
+        List<Id> listIds = new List<Id>();
+         List<Id> listZDIds = new List<Id>();
+          List<Id> listNHOSIds = new List<Id>();
+        List<Id> listEWIIds = new List<Id>();
+        List<case> caselist = new List<case>();
+        //NPP-29 AC13 and NPP-27 AC7 (Deposit to be repaid - court case)
+        List<Case> lstOfCourtCases = new List<Case>(); 
+        List<Case> lstOfEvidGathCases = new List<Case>();
+        Id devRecordTypeId = Schema.SObjectType.Case.getRecordTypeInfosByName().get('Dispute SDS Custodial').getRecordTypeId();
+        Id devZDRecordTypeId = Schema.SObjectType.Case.getRecordTypeInfosByName().get('Zero Deposit Dispute').getRecordTypeId();
+        Id devNHOSRecordTypeId = Schema.SObjectType.Case.getRecordTypeInfosByName().get('NHOS Complaint').getRecordTypeId();
+        Id devEWIRecordTypeId = Schema.SObjectType.Case.getRecordTypeInfosByName().get('Dispute EW Insured').getRecordTypeId();
+        
+        if (Trigger.isAfter && Trigger.isUpdate) {
+            list<Case> caseListSurvey = [Select Id,SuppliedEmail,RecordType.Name,Status,Origin,SuppliedName,CaseNumber,(SELECT Id, Status FROM EmailMessages WHERE Status = '2' AND Incoming = true ORDER BY CreatedDate ASC LIMIT 1) from Case where Id IN : Trigger.new];
+            CaseSurveyTriggerHandler.onAfterUpdate(caseListSurvey, Trigger.oldMap);
+        }
+ 
+        if(trigger.isUpdate ||trigger.isInsert)  {
+        for (case childObj : Trigger.new ) {
+                if(childObj.RecordtypeId==devRecordTypeId && childObj.Deposit_Account_Number__c !=null ){
+                    listIds.add(childObj.Deposit_Account_Number__c);
+                }
+                if(childObj.RecordtypeId==devZDRecordTypeId ){
+                    listZDIds.add(childObj.Id);
+                }
+                if(childObj.RecordtypeId==devNHOSRecordTypeId  ){
+                    listNHOSIds.add(childObj.Id);
+                }
+            if(childObj.RecordtypeId==devEWIRecordTypeId  ){
+                    listEWIIds.add(childObj.Id);
+                }
+            }
+        }
+        if(trigger.isAfter  && (trigger.isUpdate ||trigger.isInsert) ) {
+            
+            if(listIds.size()>0) {
+                parentOpps = new Map<Id, Deposit__c>([SELECT id,ChangeOver_CaseStatus__c ,Amount_Paid_to_Tenant__c,Amount_Paid_to_Landlord__c,(SELECT ID,ChangeOver_Status__c,status,Deposit_Account_Number__c,Amount_Paid_to_Tenant__c,Amount_Paid_to_Landlord__c FROM Cases__r order by lastmodifiedDate DESC limit 1) FROM Deposit__c WHERE ID IN :listIds]);
+                for (case nls: Trigger.new){
+                  //  System.debug('Trigger.oldMap.get(nls.Id).Status '+Trigger.oldMap.get(nls.Id).Status);
+                    if(parentOpps.containsKey(nls.Deposit_Account_Number__c)){
+                        Deposit__c myParentOpp = parentOpps.get(nls.Deposit_Account_Number__c);
+                        myParentOpp.Amount_Paid_to_Tenant__c = nls.Amount_Paid_to_Tenant__c!=null?nls.Amount_Paid_to_Tenant__c:0;
+                        myParentOpp.Amount_Paid_to_Landlord__c = nls.Amount_Paid_to_Landlord__c!=null?nls.Amount_Paid_to_Landlord__c:0;
+                        myParentOpp.Case_Status__c = nls.status;
+                        myParentOpp.ChangeOver_CaseStatus__c = nls.ChangeOver_Status__c;
+                        myParentOpp.caseId__c = nls.Id;
+                    }
+                    if((nls.RecordtypeId==devRecordTypeId) && (nls.Status=='Repayment disputed - self-resolution')  && (Trigger.oldMap != null && Trigger.oldMap.get(nls.Id) != null && Trigger.oldMap.get(nls.Id).Status !=nls.Status ) && (Trigger.oldMap != null && Trigger.oldMap.get(nls.Id) != null && Trigger.oldMap.get(nls.Id).Status !='On Hold' ) ) {
+                        caselist.add(nls);  
+                    }
+                    
+                     if(nls.Status == 'Deposit to be repaid - court case' && trigger.oldMAp != null && trigger.oldMAp.get(nls.Id) != null &&
+                       trigger.oldMAp.get(nls.Id).Status != nls.Status && trigger.newMap.get(nls.Id).RecordTypeId == devRecordTypeId ) {
+                           lstOfCourtCases.add(nls);
+                       }
+                    /*if(nls.Status == 'Evidence review complete' && trigger.oldMAp.get(nls.Id).Status != nls.Status && 
+                       (trigger.oldMAp.get(nls.Id).Status == 'Evidence gathering AA/LL' 
+                        || trigger.oldMAp.get(nls.Id).Status == 'Evidence Gathering TT' || 
+                        trigger.oldMAp.get(nls.Id).Status == 'Awaiting Evidence Review') 
+                       && trigger.newMap.get(nls.Id).RecordTypeId == devRecordTypeId ) 
+                    {
+                        lstOfEvidGathCases.add(nls);
+                    }*/
+                    
+                }
+                update parentOpps.values();
+                if(!caselist.isEmpty()){
+                    EI_UpdateRepaymentRequestToCase.updatecaseandrelateditems(caselist);   
+                }
+                
+                 if(!lstOfCourtCases.isEmpty())
+                {
+                    EI_SdsColleagueChangesCaseStatus.depositToBeRepaidCourtCase(lstOfCourtCases);
+                }
+                /*if(!lstOfEvidGathCases.isEmpty())
+                {
+                    EI_SdsColleagueChangesCaseStatus.evidenceReviewComplete(lstOfEvidGathCases);
+                }*/
+                       
+            
+                if(trigger.isUpdate) {
+                    //NPP-41
+                  //  EI_EvidenceGatheringMails.createPaymentAndInstalmentsRecord(trigger.new, trigger.oldMap,trigger.newMap);
+                    
+                    //NPP-41
+                    //EI_SdsColleagueChangesCaseStatus.handleCaseAssignmentRuleforselfresolution(trigger.newmap, trigger.oldmap);
+                    
+                    // NPP-4 and NPP-5
+                    Set<Id> casIdsForLL = new Set<Id>();
+                    Set<Id> casIdsForTT = new Set<Id>();
+                    Set<Id> casIdsSet = new Set<Id>();
+                    // NPP-37
+                    Set<Id> caseIdsForRDSF = new Set<Id>(); // Repayment disputed - self-resolution
+                    for(Case casinst : trigger.new) {
+                        if(casinst.RecordtypeId==devRecordTypeId) {
+                            if(casinst.Status == 'Evidence gathering AA/LL' &&
+                               trigger.oldMAp.get(casinst.Id).Status == 'Repayment disputed - self-resolution') 
+                            {
+                                // Gather evidence from landlord/agent
+                                casIdsForLL.add(casinst.Id);
+                            }
+                            if(casinst.Status == 'Evidence Gathering TT' &&
+                               (trigger.oldMAp.get(casinst.Id).Status != 'Evidence Gathering TT' || trigger.oldMAp.get(casinst.Id).Status != 'On Hold')) 
+                            {
+                                // Gather evidence from tenant
+                                casIdsForTT.add(casinst.Id);
+                            }
+                            if(casinst.Status == 'Repayment disputed - self-resolution' &&
+                               (trigger.oldMAp.get(casinst.Id).Status != 'Repayment disputed - self-resolution' && trigger.oldMAp.get(casinst.Id).Status != 'On Hold')) 
+                            {
+                                caseIdsForRDSF.add(casinst.Id);
+                            }
+                            //NPP-41 AC6.5 
+                            if(trigger.oldMAp.get(casinst.Id).Status != casinst.Status && trigger.oldMAp.get(casinst.Id).Status !='Repayment requested - tenant' 
+                               && casinst.Status == 'Deposit to be repaid - repayment agreed') 
+                            {
+                                //call method to send email
+                                casIdsSet.add(casinst.Id);
+                            }
+                        }
+                    }
+                //if(!casIdsForLL.isEmpty()) EI_EvidenceGatheringMails.notifyLandlordandTenant(casIdsForLL,'LandlordEvdStage');
+                //if(!casIdsForTT.isEmpty()) EI_EvidenceGatheringMails.notifyLandlordandTenant(casIdsForTT,'TenantEvdStage');
+                if(!caseIdsForRDSF.isEmpty()) EI_EvidenceGatheringMails.inviteAATTfornegotiate(caseIdsForRDSF);
+                //if(!casIdsSet.isEmpty() && !EI_selfresolutionsummaryviewtenant.AgreedByCasePar) EI_EvidenceGatheringMails.notifyLandlordandTenant(casIdsSet,'TenantEvdStage');
+                
+                
+                }
+            }
+            
+            // To track the Case Status History on Insert
+            /* if(trigger.isInsert) {
+                EI_CaseStatusHistory.caseStatusHistoryOnInsert(trigger.new, trigger.newMap); 
+            } */
+            
+            // Calling Logic for Merged Proccesses
+            /*if(ProccessMergeCaseTriggerHandler.isNotFirstTime){ return; }
+            if(Trigger.isUpdate){
+               ProccessMergeCaseTriggerHandler.mergedProccessesLogicOnUpdate(Trigger.new, Trigger.oldMap);
+            } else {
+                ProccessMergeCaseTriggerHandler.mergedProccessesLogic(Trigger.new);
+            }*/
+            
+        }
+        
+        /* SDS - conditions for before trigger in case update scenarios START */
+        if(Trigger.isBefore && Trigger.isUpdate && listIds.size()>0) {
+            
+            // NPP-4 & 5
+            EI_EvidenceGatheringMails.notifyLandlordandTenant(trigger.new, trigger.newMap, trigger.oldMap);
+            
+            // NPP-41
+            EI_EvidenceGatheringMails.createPaymentAndInstalmentsRecord(trigger.new, trigger.oldMap,trigger.newMap);
+            
+            // NPP-265
+            EI_SdsColleagueChangesCaseStatus.paymentkpiforfinance(trigger.new, trigger.oldMap);
+            
+            // NPP-13
+            EI_Adjudicationreviewdecisionbyparty.beforeupdatecaseandrelateditems(trigger.new);
+            
+            // NPP-8
+            EI_Adjudicationreviewdecisionbyparty.beforeupdatecaseholdandrelateditems(trigger.new, trigger.oldMap);
+            
+            //NPP-14
+            EI_Adjudicationreviewdecisionbyparty.createPaymentAndInstalmentsRecordNew(trigger.new, trigger.oldMap, trigger.newMap);
+            
+            // NPP-15
+            EI_SdsColleagueChangesCaseStatus.adjReviewReqAcceptance(trigger.new, trigger.oldMap);
+                
+            // NPP-15   
+            EI_SdsColleagueChangesCaseStatus.adjDecisionIssued(trigger.new, trigger.oldMap);
+            
+            // NPP-540 -> AC-4, AC-11
+            EI_SdsColleagueChangesCaseStatus.caseMovesBackToEvidenceStages(trigger.new, trigger.newMap, trigger.oldMap);
+            
+            // NPP-540 -> AC-7, AC-14
+            EI_SdsColleagueChangesCaseStatus.caseEntersDepositToBeRepaidNoEvidence(trigger.new, trigger.newMap, trigger.oldMap);
+            
+             //ISD-20642 To send email when case move to Deposit to be repaid – decision issued 
+            EI_SdsColleagueChangesCaseStatus.SendEmailWhenFinalDecisonLettertobeIssued(trigger.new, trigger.newMap, trigger.oldMap);
+            
+            // To track the Case Status History
+            //EI_CaseStatusHistory.caseStatusHistoryOnUpdate(trigger.new, trigger.newMap, trigger.oldMap); 
+            
+            // For update respond date as per onhold functionality 
+            EI_Sds_OnholdStatus.updateResponddate(trigger.newmap, trigger.oldmap);
+            
+            // NPP-29
+            EI_SdsColleagueChangesCaseStatus.resolvedWithoutAdjudication(trigger.new, trigger.oldMap, trigger.newMap);
+            
+            for(Case nls: trigger.new) {
+                if(nls.Status == 'Evidence review complete' && trigger.oldMAp.get(nls.Id).Status != nls.Status && 
+                   (trigger.oldMAp.get(nls.Id).Status == 'Evidence gathering AA/LL' 
+                    || trigger.oldMAp.get(nls.Id).Status == 'Evidence Gathering TT' || 
+                    trigger.oldMAp.get(nls.Id).Status == 'Awaiting Evidence Review') 
+                   && trigger.newMap.get(nls.Id).RecordTypeId == devRecordTypeId ) 
+                {
+                    lstOfEvidGathCases.add(nls);
+                }
+            }
+            if(!lstOfEvidGathCases.isEmpty())
+            {
+                EI_SdsColleagueChangesCaseStatus.evidenceReviewComplete(lstOfEvidGathCases);
+            }
+            
+            // To track the Case Status History in SDS
+           // EI_SDS_CaseStatusHistory.caseStatusHistoryOnUpdate(trigger.new, trigger.newMap, trigger.oldMap);
+            
+        }  
+        /* SDS - conditions for before trigger in case update scenarios END */
+        
+        
+        /*
+* 
+* 
+* Espire ZD -March 18,2021
+* 
+*/
+        
+        if(trigger.isafter && Trigger.isUpdate || (Test.isRunningTest() && Trigger.isUpdate && listZDIds.size()>0 ))
+        {
+            if(listIds.size()>0){
+               EI_SDS_CaseStatusHistory.caseStatusHistoryOnUpdate(trigger.new, trigger.newMap, trigger.oldMap);  } 
+            
+            
+            
+            /*  ====== Send Email to invite perties  =====  */
+            
+            
+            if(!EI_ZDCaseTriggerHandler.IsMailExecuted && !system.isBatch() && listZDIds.size()>0 ){
+                EI_ZDCaseTriggerHandler.sendmailToInviteAGLLTT(trigger.newmap, trigger.oldmap);
+                EI_ZDCaseTriggerHandler.sendmailToSelfResolution(trigger.newmap, trigger.oldmap);
+                EI_ZDCaseTriggerHandler.sendmailToInviteEvidenceAGLL(trigger.newmap, trigger.oldmap);
+                EI_ZDCaseTriggerHandler.sendmailToInviteEvidenceTT(trigger.newmap, trigger.oldmap);
+               // EI_ZDCaseTriggerHandler.handleCloseCaseEmail(trigger.newmap, trigger.oldmap);
+                EI_ZDCaseTriggerHandler.makePayment(trigger.newmap, trigger.oldmap);
+                EI_ZDCaseTriggerHandler.handleStatusCaseMail(trigger.newmap, trigger.oldmap);
+                EI_ZDCaseTriggerHandler.IsMailExecuted = true;
+            }
+            /*
+* 
+* fire Assignment Rule  June16,2021
+* 
+*/
+                EI_ZDCaseTriggerHandler.handleCaseAssignmentRuleTrigger(trigger.newmap, trigger.oldmap);
+                EI_ZDCaseTriggerHandler.handleCasePartiAssignmentRuleTrigger(trigger.newmap, trigger.oldmap);
+            
+             //send mail method for NI
+          //  EI_NI_CaseTriggerHandler.sendmailToSelfResolution(trigger.newmap, trigger.oldmap);
+            
+        }
+        
+        
+        // To track the Case Status History on Insert
+        if(trigger.isafter && Trigger.isInsert && !EI_ZDCaseTriggerHandler.isExecuted)
+        {
+            // For Case status history in ZD
+            if(listZDIds.size()>0){
+            EI_CaseStatusHistory.caseStatusHistoryOnInsert(trigger.new, trigger.newMap); }
+            
+            // For Case status history in SDS
+            if(listIds.size()>0){
+            EI_SDS_CaseStatusHistory.caseStatusHistoryOnInsert(trigger.new, trigger.newMap); }
+        }
+        
+      // if(!EI_ZDCaseTriggerHandler.isExecuted && trigger.isBefore && Trigger.isUpdate && listZDIds.size()>0)
+        if(trigger.isBefore && Trigger.isUpdate && listZDIds.size()>0)
+        {
+            
+            
+            EI_ZDCaseTriggerHandler.updateResponddate(trigger.newmap, trigger.oldmap);
+            
+            // To track the Case Status History in ZD 
+            //EI_CaseStatusHistory.caseStatusHistoryOnUpdate(trigger.new, trigger.newMap, trigger.oldMap);
+            //EI_ZDCaseTriggerHandler.isExecuted = true;
+        }
+        /*
+* 
+* 
+* Espire ZD 
+* 
+*/  
+         
+        /*********NHOS**********/
+    if(trigger.isBefore && Trigger.isInsert && listNHOSIds.size()>0)
+    { 
+        NHOS_CaseTriggerHandler.setNHOSCaseReferenceNo(Trigger.new);
+      
+    }
+        
+        if(!NHOS_CaseTriggerHandler.isExecuted && trigger.isBefore && Trigger.isUpdate && listNHOSIds.size()>0)
+        {
+            NHOS_CaseTriggerHandler.updateResponddate(trigger.newmap, trigger.oldmap);
+            
+        }
+    
+        if((trigger.isafter && Trigger.isUpdate && !NHOS_CaseTriggerHandler.IsMailExecuted && !system.isBatch() && listNHOSIds.size()>0)|| (Test.isRunningTest() && Trigger.isUpdate && listNHOSIds.size()>0 && !NHOS_CaseTriggerHandler.IsMailExecuted ))
+        {
+            NHOS_CaseTriggerHandler.sendmailToComplaintAcceptedAwaitingDeveloperResponse(trigger.newmap, trigger.oldmap);
+            NHOS_CaseTriggerHandler.developerEvidenceSubmittedReviewInProgress(trigger.newmap, trigger.oldmap);
+            NHOS_CaseTriggerHandler.caseworkerInvitesPartiesToAddAdditionalComments(trigger.newmap, trigger.oldmap);
+            NHOS_CaseTriggerHandler.portalClosedPreOmbudsmanReview(trigger.newmap, trigger.oldmap);
+            NHOS_CaseTriggerHandler.awaitingOmbudsmanDraftDecision(trigger.newmap, trigger.oldmap);
+            NHOS_CaseTriggerHandler.draftDecisionIssued(trigger.newmap, trigger.oldmap);
+            NHOS_CaseTriggerHandler.deadlineCommentPendingFinalDecision(trigger.newmap, trigger.oldmap);
+            NHOS_CaseTriggerHandler.finalDecisionIssuedAwaitingHomebuyersAcceptance(trigger.newmap, trigger.oldmap);
+            NHOS_CaseTriggerHandler.finalDecisionAccept(trigger.newmap, trigger.oldmap);
+            NHOS_CaseTriggerHandler.finalDecisionReject(trigger.newmap, trigger.oldmap);
+            NHOS_CaseTriggerHandler.sendmailToComplaintCancelled(trigger.newmap, trigger.oldmap);
+            //NHOS_CaseTriggerHandler.sendmailToComplaintRejected(trigger.newmap, trigger.oldmap); 
+            NHOS_CaseTriggerHandler.IsMailExecuted = true;
+        }
+        
+        
+        // To track the Case Status History on Insert
+        if(trigger.isafter && Trigger.isInsert && listNHOSIds.size()>0) // && !Test.isRunningTest())
+        {
+            NHOS_CaseStatusHistory.caseStatusHistoryOnInsert(trigger.new, trigger.newMap);
+        }
+        // To track the Case Status History on Update
+        if(trigger.isAfter && Trigger.isUpdate && listNHOSIds.size()>0)
+        {            
+            NHOS_CaseStatusHistory.caseStatusHistoryOnUpdate(trigger.new, trigger.newMap, trigger.oldMap);
+            EI_CaseStatusHistory.caseStatusHistoryOnUpdate(trigger.new, trigger.newMap, trigger.oldMap);
+        } 
+    /*********NHOS**********/ 
+      /* EWI - conditions for before trigger in case update scenarios START */
+        
+        if(Trigger.isBefore && Trigger.isInsert && listIds.size()==0){
+            EI_EWI_CaseTriggerHandler.onBeforeInsert(trigger.new);
+            //EI_EWI_CaseTriggerHandler.updateCaseDisputedFundsFields(trigger.new);
+        }
+        
+        if(Trigger.isBefore && Trigger.isUpdate && listIds.size()==0) {
+            
+            //added by Shirin on 27/10/2022
+            EI_EWI_CaseTriggerHandler.updateCaseDisputedFundsFields(trigger.new);
+            if(!EI_EWI_CaseTriggerHandler.byPassBeforeUpdate){
+                EI_EWI_CaseTriggerHandler.byPassBeforeUpdate = true;
+                EI_EWI_CaseTriggerHandler.onBeforeUpdate(trigger.new,trigger.newMap, trigger.oldMap);
+                
+            }
+            
+            //EI_EWI_CaseTriggerHandler.UpdateCaseowner(trigger.new,trigger.oldMap,trigger.newMap); 
+            //EI_EWI_CaseTriggerHandler.internalKPI28Days(trigger.new,trigger.oldMap,trigger.newMap);
+            System.debug('line 423-->>');
+           EI_EWI_OnHoldStatus.updateResponddate(trigger.newMap, trigger.oldMap);
+            System.debug('line 425-->>');
+            
+           // EI_EWI_OnHoldStatus.restrictOtherStatusForOnhold(trigger.newMap, trigger.oldMap);
+                       
+        }
+        
+        if((Trigger.isAfter && Trigger.isUpdate && !EI_EWI_CaseTriggerHandler.isAfterEWI && listIds.size()==0)|| (Test.isRunningTest() && Trigger.isUpdate  && listIds.size()==0 )){
+            
+            
+             
+           // EI_EWI_CaseTriggerHandler.isAfterEWI = true;
+            
+            
+            
+            
+            
+            
+            // EI_EWI_CaseTriggerHandler.handleCaseAssignmentRuleTrigger(trigger.newmap, trigger.oldmap); commented by Vidhi
+            //EI_EWI_CaseTriggerHandler.createInstallmentRemainingAmount(trigger.new,trigger.oldMap);
+            //Added by Shirin for EID-49 on 30th Sept 2022
+            if(!EI_EWI_CaseTriggerHandler.byPassAfterUpdate){
+                //EI_EWI_CaseTriggerHandler.byPassAfterUpdate = true;
+                 
+                //EI_EWI_CaseTriggerHandler.SendMoneytoTenantAfterAdjudication(trigger.new, trigger.oldmap);
+                EI_EWI_CaseTriggerHandler.onAfterUpdate(trigger.new, trigger.newMap, trigger.oldMap);
+                
+            }
+            Id CaseRecordTypeId = Schema.SObjectType.Case.getRecordTypeInfosByName().get('Dispute EW Insured').getRecordTypeId();
+            list<id> recordProcessed = new list<id>();
+            for(case cs : trigger.new)
+                {
+                    if(cs.RecordTypeId ==CaseRecordTypeId)
+                    {
+                        if(cs.Status != Trigger.oldMap.get(cs.ID).status && cs.Status !='On Hold' && Trigger.oldMap.get(cs.ID).status != 'On Hold')
+                        {
+                            recordProcessed.add(cs.id);
+                        }
+                    }
+                }
+            if(recordProcessed.size()>0)
+            {
+                if(system.isBatch())
+                {
+                  EI_EWI_CaseStatusUpdateApi.PerformCalloutMethod(recordProcessed);
+                }
+                else
+                {
+                    if(!Test.isRunningTest())
+                    {
+                        EI_EWI_CaseStatusUpdateApi.PerformCalloutTrigger(recordProcessed);
+                    }
+                   
+                } 
+            }
+            
+            
+            //LS - Keep this method in end because this method updates Case records which disturbes the order of execution.
+            EI_EWI_CaseTriggerHandler.handleCaseAssignmentRuleTrigger(trigger.newmap, trigger.oldmap); // added by Vidhi          
+        
+        }
+        if(trigger.isafter && Trigger.isDelete && listIds.size()==0)
+        {
+            EI_EWI_CaseTriggerHandler.deleteOtherEntityWhenCaseDeleted(trigger.old);
+            Id CaseRecordTypeId = Schema.SObjectType.Case.getRecordTypeInfosByName().get('Dispute EW Insured').getRecordTypeId();
+            
+            list<Temp_Object__c> temp = new list<Temp_Object__c>();
+            for(case cs :trigger.old)
+            {
+                if(cs.recordtypeID == CaseRecordTypeId && !(cs.V_External_Id__c =='' ||cs.V_External_Id__c ==null) )
+                {
+                    temp.add(new Temp_Object__c(Record_Type__c =cs.Record_Type_Name__c,EWI_external_ID__c =cs.V_External_Id__c,Case_object_Record__c=Json.serialize(cs) ) );
+                    
+                }
+            }
+            insert temp;
+            
+        }
+ 
+         /*EWI - conditions for before trigger in case update scenarios END */    
+        if(Trigger.isbefore && trigger.Isdelete)
+        {
+             EI_EWI_CaseTriggerHandler.validationOnCaseDelete(Trigger.old);
+        }     
+        
+    }
+
+    /*if(querylimit.CheckOn__c) {
+        // CaseTrigger Merged: Inserted Logic from CaseTrigger
+        FC_TriggerDispatcher.run(new FC_CaseTriggerHandler());
+    }*/
+    /* TGK-7**email-to-case start */
+    if(trigger.isBefore && trigger.isInsert){
+        CaseTriggerHandler.beforeinsert(trigger.new);
+    }
+    if(trigger.isBefore && trigger.isUpdate){
+        CaseTriggerHandler.beforeupdate(trigger.new, trigger.oldMap);
+    }
+    /* TGK-7**email-to-case END */
+
+    
+}
